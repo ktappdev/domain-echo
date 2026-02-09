@@ -1,13 +1,17 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// Get messages for a specific domain (last 50)
+// Get messages for a specific domain (last 50, max 30 minutes old)
 export const getByDomain = query({
   args: { domain: v.string() },
   handler: async (ctx, args) => {
+    const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
+    
     const messages = await ctx.db
       .query("messages")
-      .withIndex("by_domain", (q) => q.eq("domain", args.domain))
+      .withIndex("by_domain_and_time", (q) => 
+        q.eq("domain", args.domain).gte("createdAt", thirtyMinutesAgo)
+      )
       .order("desc")
       .take(50);
     

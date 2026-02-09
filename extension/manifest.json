@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Domain Echo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Anonymous, real-time chat rooms for every domain you visit",
+  "author": "Domain Echo",
+  "homepage_url": "https://domainecho.site",
   "permissions": [
     "activeTab",
     "storage"
