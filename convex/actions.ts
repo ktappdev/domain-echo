@@ -1,6 +1,9 @@
 import { v } from "convex/values";
+import { anyApi } from "convex/server";
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+
+const api = anyApi;
 
 // Action to notify external API when a message is sent
 export const notifyMessageSent = action({
@@ -47,16 +50,21 @@ export const sendMessageWithNotification = action({
     content: v.string(),
     username: v.string(),
   },
-  handler: async (ctx, args) => {
+  returns: v.id("messages"),
+  handler: async (ctx, args): Promise<Id<"messages">> => {
     // First, save the message to the database
-    const messageId = await ctx.runMutation(api.messages.send, {
+    const messageId: Id<"messages"> = await ctx.runMutation(api.messages.send, {
       domain: args.domain,
       content: args.content,
       username: args.username,
     });
 
-    // Then, notify your external API (runs in parallel, doesn't block)
-    await notifyMessageSent(ctx, args);
+    // Then, notify your external API
+    await ctx.runAction(api.actions.notifyMessageSent, {
+      domain: args.domain,
+      content: args.content,
+      username: args.username,
+    });
 
     return messageId;
   },
