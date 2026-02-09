@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Domain Echo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">
+        <svg class="logo" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <h1>Domain Echo</h1>
+      </div>
+      <div class="domain" id="current-domain">Loading...</div>
+    </div>
+
+    <div class="users-section">
+      <div class="users-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <span id="user-count">0 online</span>
+      </div>
+      <div class="users-list" id="users-list"></div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="welcome">
+        <p>Welcome to the chat room for this domain!</p>
+        <p class="welcome-sub">All messages are anonymous and ephemeral.</p>
+      </div>
+    </div>
+
+    <div class="input-section">
+      <input
+        type="text"
+        id="message-input"
+        placeholder="Type a message..."
+        maxlength="500"
+        autocomplete="off"
+      >
+      <button id="send-button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

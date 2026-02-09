@@ -1,0 +1,42 @@
+DOMAIN ECHO - QUICK SETUP (15 MINUTES)
+=====================================
+
+STEP 1: SUPABASE (5 min)
+- Go to supabase.com
+- Create project (takes ~2 min to initialize)
+- Go to Settings → API
+- Copy Project URL and Anon Key
+
+STEP 2: CONFIG (1 min)
+- Open config.js
+- Replace YOUR_SUPABASE_URL_HERE with Project URL
+- Replace YOUR_SUPABASE_ANON_KEY_HERE with Anon Key
+- Save
+
+STEP 3: ICONS (3 min)
+- Open icon-generator.html in Chrome
+- Right-click each image → Save as
+- Save as: icon16.png, icon48.png, icon128.png
+- Put files in this folder
+
+STEP 4: LOAD (2 min)
+- Go to chrome://extensions/
+- Turn ON "Developer mode" (top right)
+- Click "Load unpacked"
+- Select this folder (extension/)
+- Done!
+
+STEP 5: TEST (2 min)
+- Visit any website
+- Click Domain Echo icon (blue chat bubble)
+- Type a message, press Enter
+- Open same site in new tab
+- Click icon → Should see your message
+
+TROUBLESHOOTING:
+- Icon not showing? Check developer mode is ON, reload extension
+- Popup blank? Right-click → Inspect → Console for errors
+- Network error? Check config.js has real credentials
+- All else? Read DOMAIN_ECHO_DOCS.md for detailed guide
+
+DONE! You now have working domain-based anonymous chat.

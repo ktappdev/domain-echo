@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Imports</title>
+</head>
+<body>
+  <h1>Testing Convex Imports</h1>
+  <div id="status">Testing...</div>
+  <pre id="output"></pre>
+
+  <script type="module">
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    
+    try {
+      output.textContent += 'Step 1: Importing ConvexClient...\n';
+      
+      const module = await import('./lib/convex-dist/esm/browser/index.js');
+      output.textContent += 'Step 2: Import successful!\n';
+      output.textContent += 'Exports: ' + Object.keys(module).join(', ') + '\n';
+      
+      const { ConvexClient } = module;
+      output.textContent += 'Step 3: ConvexClient found: ' + (typeof ConvexClient) + '\n';
+      
+      output.textContent += '\nStep 4: Importing config...\n';
+      await import('./config.js');
+      output.textContent += 'Config loaded: ' + CONFIG.CONVEX_URL + '\n';
+      
+      output.textContent += '\nStep 5: Creating ConvexClient instance...\n';
+      const client = new ConvexClient(CONFIG.CONVEX_URL);
+      output.textContent += 'Client created: ' + (typeof client) + '\n';
+      
+      output.textContent += '\nStep 6: Importing API...\n';
+      const apiModule = await import('./convex/_generated/api.js');
+      output.textContent += 'API imported: ' + Object.keys(apiModule).join(', ') + '\n';
+      
+      status.textContent = '✅ ALL IMPORTS SUCCESSFUL!';
+      status.style.color = 'green';
+      
+    } catch (error) {
+      output.textContent += '\n❌ ERROR:\n';
+      output.textContent += error.toString() + '\n';
+      output.textContent += error.stack + '\n';
+      status.textContent = '❌ IMPORT FAILED';
+      status.style.color = 'red';
+    }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,384 @@
+const { createClient } = supabase;
+
+let supabaseClient;
+let currentDomain = '';
+let currentUsername = '';
+let sessionId = '';
+let messageSubscription = null;
+let presenceSubscription = null;
+let presenceInterval = null;
+
+const PRESENCE_UPDATE_INTERVAL = 30000;
+const PRESENCE_TIMEOUT = 60000;
+
+function initializeSupabase() {
+  supabaseClient = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+}
+
+function generateUsername() {
+  const adjectives = ['Swift', 'Brave', 'Quiet', 'Bold', 'Wise', 'Wild', 'Cool', 'Calm', 'Dark', 'Bright'];
+  const nouns = ['Fox', 'Wolf', 'Bear', 'Eagle', 'Tiger', 'Panda', 'Raven', 'Hawk', 'Lion', 'Owl'];
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const num = Math.floor(Math.random() * 999);
+  return `${adj}${noun}${num}`;
+}
+
+function generateSessionId() {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+async function getCurrentTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab;
+}
+
+function extractDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+async function loadUsername() {
+  const stored = await chrome.storage.local.get(['username']);
+  if (stored.username) {
+    currentUsername = stored.username;
+  } else {
+    currentUsername = generateUsername();
+    await chrome.storage.local.set({ username: currentUsername });
+  }
+}
+
+async function updatePresence() {
+  if (!currentDomain || !sessionId) return;
+
+  try {
+    const { data: existing } = await supabaseClient
+      .from('presence')
+      .select('id')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    if (existing) {
+      await supabaseClient
+        .from('presence')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('session_id', sessionId);
+    } else {
+      await supabaseClient
+        .from('presence')
+        .insert({
+          domain: currentDomain,
+          username: currentUsername,
+          session_id: sessionId,
+          last_seen: new Date().toISOString()
+        });
+    }
+  } catch (error) {
+    console.error('Error updating presence:', error);
+  }
+}
+
+async function cleanupStalePresence() {
+  const threshold = new Date(Date.now() - PRESENCE_TIMEOUT).toISOString();
+
+  try {
+    await supabaseClient
+      .from('presence')
+      .delete()
+      .lt('last_seen', threshold);
+  } catch (error) {
+    console.error('Error cleaning up presence:', error);
+  }
+}
+
+async function loadPresence() {
+  if (!currentDomain) return;
+
+  await cleanupStalePresence();
+
+  try {
+    const threshold = new Date(Date.now() - PRESENCE_TIMEOUT).toISOString();
+    const { data, error } = await supabaseClient
+      .from('presence')
+      .select('username, session_id')
+      .eq('domain', currentDomain)
+      .gt('last_seen', threshold);
+
+    if (error) throw error;
+
+    const usersList = document.getElementById('users-list');
+    const userCount = document.getElementById('user-count');
+
+    usersList.innerHTML = '';
+
+    if (data && data.length > 0) {
+      userCount.textContent = `${data.length} online`;
+
+      data.forEach(user => {
+        const badge = document.createElement('div');
+        badge.className = 'user-badge';
+        if (user.session_id === sessionId) {
+          badge.className += ' self';
+        }
+        badge.textContent = user.username;
+        usersList.appendChild(badge);
+      });
+    } else {
+      userCount.textContent = '0 online';
+    }
+  } catch (error) {
+    console.error('Error loading presence:', error);
+  }
+}
+
+function subscribeToPresence() {
+  if (presenceSubscription) {
+    supabaseClient.removeChannel(presenceSubscription);
+  }
+
+  presenceSubscription = supabaseClient
+    .channel(`presence:${currentDomain}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'presence',
+        filter: `domain=eq.${currentDomain}`
+      },
+      () => {
+        loadPresence();
+      }
+    )
+    .subscribe();
+}
+
+async function loadMessages() {
+  if (!currentDomain) return;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('messages')
+      .select('*')
+      .eq('domain', currentDomain)
+      .order('created_at', { ascending: true })
+      .limit(50);
+
+    if (error) throw error;
+
+    const messagesContainer = document.getElementById('messages');
+    const welcome = messagesContainer.querySelector('.welcome');
+
+    if (data && data.length > 0) {
+      if (welcome) welcome.remove();
+
+      data.forEach(msg => {
+        appendMessage(msg, false);
+      });
+
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  } catch (error) {
+    console.error('Error loading messages:', error);
+    showError('Failed to load messages');
+  }
+}
+
+function subscribeToMessages() {
+  if (messageSubscription) {
+    supabaseClient.removeChannel(messageSubscription);
+  }
+
+  messageSubscription = supabaseClient
+    .channel(`messages:${currentDomain}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `domain=eq.${currentDomain}`
+      },
+      (payload) => {
+        appendMessage(payload.new, true);
+      }
+    )
+    .subscribe();
+}
+
+function appendMessage(message, isNew) {
+  const messagesContainer = document.getElementById('messages');
+  const welcome = messagesContainer.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  const existingMessage = document.querySelector(`[data-message-id="${message.id}"]`);
+  if (existingMessage) return;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'message';
+  messageDiv.setAttribute('data-message-id', message.id);
+
+  if (message.username === currentUsername) {
+    messageDiv.classList.add('self');
+  }
+
+  const header = document.createElement('div');
+  header.className = 'message-header';
+
+  const username = document.createElement('div');
+  username.className = 'message-username';
+  username.textContent = message.username;
+
+  const time = document.createElement('div');
+  time.className = 'message-time';
+  time.textContent = formatTime(message.created_at);
+
+  header.appendChild(username);
+  header.appendChild(time);
+
+  const content = document.createElement('div');
+  content.className = 'message-content';
+  content.textContent = message.content;
+
+  messageDiv.appendChild(header);
+  messageDiv.appendChild(content);
+
+  messagesContainer.appendChild(messageDiv);
+
+  if (isNew) {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+}
+
+function formatTime(timestamp) {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  return date.toLocaleDateString();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('message-input');
+  const sendButton = document.getElementById('send-button');
+  const content = input.value.trim();
+
+  if (!content) return;
+
+  sendButton.disabled = true;
+  input.disabled = true;
+
+  try {
+    const { error } = await supabaseClient
+      .from('messages')
+      .insert({
+        domain: currentDomain,
+        content: content,
+        username: currentUsername,
+        created_at: new Date().toISOString()
+      });
+
+    if (error) throw error;
+
+    input.value = '';
+  } catch (error) {
+    console.error('Error sending message:', error);
+    showError('Failed to send message');
+  } finally {
+    sendButton.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+function showError(message) {
+  const messagesContainer = document.getElementById('messages');
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'system-message error-message';
+  errorDiv.textContent = message;
+  messagesContainer.appendChild(errorDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+  setTimeout(() => {
+    errorDiv.remove();
+  }, 5000);
+}
+
+function setupEventListeners() {
+  const sendButton = document.getElementById('send-button');
+  const messageInput = document.getElementById('message-input');
+
+  sendButton.addEventListener('click', sendMessage);
+
+  messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+}
+
+async function cleanup() {
+  if (presenceInterval) {
+    clearInterval(presenceInterval);
+  }
+
+  if (sessionId && currentDomain) {
+    try {
+      await supabaseClient
+        .from('presence')
+        .delete()
+        .eq('session_id', sessionId);
+    } catch (error) {
+      console.error('Error cleaning up presence:', error);
+    }
+  }
+
+  if (messageSubscription) {
+    supabaseClient.removeChannel(messageSubscription);
+  }
+
+  if (presenceSubscription) {
+    supabaseClient.removeChannel(presenceSubscription);
+  }
+}
+
+async function initialize() {
+  initializeSupabase();
+
+  const tab = await getCurrentTab();
+  currentDomain = extractDomain(tab.url);
+
+  document.getElementById('current-domain').textContent = currentDomain;
+
+  await loadUsername();
+
+  sessionId = generateSessionId();
+
+  setupEventListeners();
+
+  await updatePresence();
+  await loadPresence();
+  await loadMessages();
+
+  subscribeToMessages();
+  subscribeToPresence();
+
+  presenceInterval = setInterval(async () => {
+    await updatePresence();
+  }, PRESENCE_UPDATE_INTERVAL);
+}
+
+window.addEventListener('load', initialize);
+window.addEventListener('unload', cleanup);
