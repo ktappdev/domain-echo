@@ -5,6 +5,11 @@ import type { Id } from "./_generated/dataModel";
 
 const api = anyApi;
 
+// NOTE: This module was an experiment to send a webhook when a message is sent.
+// Currently nothing in the app calls these actions (the extension uses messages.send directly).
+// If webhook notifications are desired, consider triggering the fetch inside messages.send
+// (or via a scheduled action) to keep things type-safe and avoid self-references.
+
 // Action to notify external API when a message is sent
 export const notifyMessageSent = action({
   args: {
