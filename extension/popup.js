@@ -135,7 +135,17 @@ function updatePresenceUI(activeUsers) {
   if (activeUsers && activeUsers.length > 0) {
     userCount.textContent = `${activeUsers.length} online`;
 
-    activeUsers.forEach(user => {
+    const maxVisible = 3;
+    const currentUser = activeUsers.find(u => u.sessionId === sessionId);
+    const otherUsers = activeUsers.filter(u => u.sessionId !== sessionId);
+    
+    const visibleUsers = currentUser 
+      ? [currentUser, ...otherUsers.slice(0, maxVisible - 1)]
+      : otherUsers.slice(0, maxVisible);
+    
+    const remainingCount = activeUsers.length - visibleUsers.length;
+
+    visibleUsers.forEach(user => {
       const badge = document.createElement('div');
       badge.className = 'user-badge';
       if (user.sessionId === sessionId) {
@@ -144,6 +154,25 @@ function updatePresenceUI(activeUsers) {
       badge.textContent = user.username;
       usersList.appendChild(badge);
     });
+
+    if (remainingCount > 0) {
+      const moreBadge = document.createElement('div');
+      moreBadge.className = 'user-badge more-badge';
+      moreBadge.textContent = `+${remainingCount} more`;
+      
+      const tooltip = document.createElement('div');
+      tooltip.className = 'users-tooltip';
+      
+      otherUsers.slice(maxVisible - (currentUser ? 1 : 0)).forEach(user => {
+        const tooltipItem = document.createElement('div');
+        tooltipItem.className = 'tooltip-item';
+        tooltipItem.textContent = user.username;
+        tooltip.appendChild(tooltipItem);
+      });
+      
+      moreBadge.appendChild(tooltip);
+      usersList.appendChild(moreBadge);
+    }
   } else {
     userCount.textContent = '0 online';
   }
@@ -168,6 +197,11 @@ async function loadMessages() {
       });
 
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      
+      // Attach listeners to dynamically created reaction buttons
+      document.querySelectorAll('.react-button').forEach(button => {
+        button.addEventListener('click', handleReactionClick);
+      });
     }
   } catch (error) {
     console.error('Error loading messages:', error);
@@ -176,27 +210,74 @@ async function loadMessages() {
 }
 
 function setupRealtimeSubscriptions() {
-  // Subscribe to messages for current domain
-  const messagesContainer = document.getElementById('messages');
-
   messageWatcher = convexClient.onUpdate(
     api.messages.getByDomain,
     { domain: currentDomain },
     (messages) => {
+      const messagesContainer = document.getElementById('messages');
       const welcome = messagesContainer.querySelector('.welcome');
       if (welcome) welcome.remove();
 
-      // Clear existing messages to avoid duplicates
-      const existingMessages = messagesContainer.querySelectorAll('.message');
-      existingMessages.forEach(msg => msg.remove());
-
-      // Render all messages
-      if (messages && messages.length > 0) {
-        messages.forEach(msg => {
-          appendMessage(msg, false);
-        });
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      if (!messages || messages.length === 0) {
+        // If messages are gone, maybe just show welcome screen again if needed, but for now, clear.
+        messagesContainer.innerHTML = ''; 
+        return;
       }
+
+      messages.forEach(msg => {
+        const existingMessageElement = document.querySelector(`[data-message-id="${msg._id}"]`);
+        
+        if (existingMessageElement) {
+          // Update existing message (focus on reactions)
+          const reactionsDiv = existingMessageElement.querySelector('.message-reactions');
+          if (reactionsDiv) {
+            reactionsDiv.innerHTML = ''; // Clear old reactions
+
+            // Re-render reactions
+            if (msg.reactions && Object.keys(msg.reactions).length > 0) {
+              Object.entries(msg.reactions).forEach(([emoji, count]) => {
+                const badge = existingMessageElement.querySelector(`.reaction-badge[data-reaction="${emoji}"]`);
+                if (badge) {
+                  badge.textContent = `${emoji} ${count}`; // Update count
+                } else {
+                  const newBadge = document.createElement('span');
+                  newBadge.className = 'reaction-badge';
+                  newBadge.setAttribute('data-reaction', emoji);
+                  newBadge.textContent = `${emoji} ${count}`;
+                  reactionsDiv.appendChild(newBadge);
+                }
+              });
+            }
+            
+            // Ensure the reaction button exists (or re-attach listener if it was removed/recreated)
+            let reactButton = existingMessageElement.querySelector('.react-button');
+            if (!reactButton) {
+                reactButton = document.createElement('button');
+                reactButton.className = 'react-button';
+                reactButton.textContent = '👍';
+                reactButton.title = 'Add 👍 reaction';
+                reactButton.setAttribute('data-message-id', msg._id);
+                reactButton.setAttribute('data-reaction', '👍');
+                reactButton.addEventListener('click', handleReactionClick);
+                reactionsDiv.appendChild(reactButton);
+            }
+            reactButton.disabled = false; // Re-enable button if it was disabled from a previous click
+          }
+        } else {
+          // New message arrived
+          appendMessage(msg, true); // Changed to true to attach listeners on real-time arrival
+        }
+      });
+      
+      // Simple cleanup: Remove messages that are in the DOM but not in the update set
+      const renderedIds = messages.map(msg => `[data-message-id="${msg._id}"]`);
+      document.querySelectorAll('.message:not(.welcome)').forEach(el => {
+          if (!renderedIds.includes(el.getAttribute('data-message-id'))) {
+              el.remove();
+          }
+      });
+
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
   );
 
@@ -246,13 +327,43 @@ function appendMessage(message, isNew) {
   content.className = 'message-content';
   content.textContent = message.content;
 
+  const reactionsDiv = document.createElement('div');
+  reactionsDiv.className = 'message-reactions';
+  
+  // Display existing reactions
+  if (message.reactions && Object.keys(message.reactions).length > 0) {
+    Object.entries(message.reactions).forEach(([emoji, count]) => {
+      const badge = document.createElement('span');
+      badge.className = 'reaction-badge';
+      badge.setAttribute('data-reaction', emoji);
+      badge.textContent = `${emoji} ${count}`;
+      reactionsDiv.appendChild(badge);
+    });
+  }
+
+  // Add reaction button
+  const reactButton = document.createElement('button');
+  reactButton.className = 'react-button';
+  reactButton.textContent = '👍';
+  reactButton.title = 'Add 👍 reaction';
+  reactButton.setAttribute('data-message-id', message._id);
+  reactButton.setAttribute('data-reaction', '👍');
+  
+  reactionsDiv.appendChild(reactButton);
+
   messageDiv.appendChild(header);
   messageDiv.appendChild(content);
+  messageDiv.appendChild(reactionsDiv);
 
   messagesContainer.appendChild(messageDiv);
 
   if (isNew) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+
+  // Attach handler for new buttons
+  if (isNew) {
+    reactButton.addEventListener('click', handleReactionClick);
   }
 }
 

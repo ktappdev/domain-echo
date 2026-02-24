@@ -4,33 +4,30 @@ Domain Echo is a Chrome extension that creates anonymous, real-time chat rooms f
 
 ## Prerequisites
 
-1. A Supabase account and project
+1. A Convex account and project
 2. Chrome or any Chromium-based browser
 
 ## Setup Steps
 
-### 1. Configure Supabase
+### 1. Configure Convex
 
-The database schema has already been created with the following tables:
-- `messages` - Stores chat messages for each domain
-- `presence` - Tracks active users in each domain
+The Convex backend is already set up with:
+- Real-time functions for chat messaging
+- Presence tracking for active users
 
-### 2. Get Your Supabase Credentials
+### 2. Get Your Convex Deployment URL
 
-1. Go to your Supabase project dashboard
-2. Navigate to Settings > API
-3. Copy the following:
-   - Project URL (SUPABASE_URL)
-   - Anon/Public Key (SUPABASE_ANON_KEY)
+1. Go to your Convex dashboard (dashboard.convex.dev)
+2. Navigate to your project settings
+3. Copy the deployment URL (it looks like: `https://your-project.convex.cloud`)
 
 ### 3. Update Configuration
 
-Edit `extension/config.js` and replace the placeholders:
+Edit `extension/config.js` and replace the placeholder:
 
 ```javascript
 const CONFIG = {
-  SUPABASE_URL: 'your-project-url.supabase.co',
-  SUPABASE_ANON_KEY: 'your-anon-key-here'
+  CONVEX_URL: 'https://your-deployment-url.convex.cloud'
 };
 ```
 
@@ -75,7 +72,7 @@ Quick option: Use an online favicon generator with a chat bubble emoji or icon.
 ## Security Notes
 
 - All messages are public within their domain room
-- Row Level Security (RLS) is enabled with anonymous access
+- Convex handles authentication and authorization
 - No personal data is collected
 - Usernames are randomly generated and stored locally
 
@@ -83,16 +80,16 @@ Quick option: Use an online favicon generator with a chat bubble emoji or icon.
 
 **Extension doesn't load:**
 - Make sure all icon files are present
-- Check that config.js has valid Supabase credentials
+- Check that config.js has valid Convex deployment URL
 
 **Messages not appearing:**
 - Check browser console for errors
-- Verify Supabase credentials are correct
-- Ensure RLS policies are properly set up
+- Verify Convex URL is correct
+- Ensure Convex functions are deployed and running
 
 **Can't send messages:**
 - Check that you're on a valid domain (not chrome:// or extension pages)
-- Verify Supabase connection in the console
+- Verify Convex connection in the console
 
 ## Privacy
 

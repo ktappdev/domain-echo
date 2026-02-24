@@ -1,16 +1,15 @@
 DOMAIN ECHO - QUICK SETUP (15 MINUTES)
 =====================================
 
-STEP 1: SUPABASE (5 min)
-- Go to supabase.com
-- Create project (takes ~2 min to initialize)
-- Go to Settings → API
-- Copy Project URL and Anon Key
+STEP 1: CONVEX (5 min)
+- Go to convex.dev
+- Create project (takes ~1 min to initialize)
+- Go to Settings → Deployment
+- Copy Deployment URL
 
 STEP 2: CONFIG (1 min)
 - Open config.js
-- Replace YOUR_SUPABASE_URL_HERE with Project URL
-- Replace YOUR_SUPABASE_ANON_KEY_HERE with Anon Key
+- Replace YOUR_CONVEX_URL_HERE with Deployment URL
 - Save
 
 STEP 3: ICONS (3 min)
@@ -36,7 +35,7 @@ STEP 5: TEST (2 min)
 TROUBLESHOOTING:
 - Icon not showing? Check developer mode is ON, reload extension
 - Popup blank? Right-click → Inspect → Console for errors
-- Network error? Check config.js has real credentials
-- All else? Read DOMAIN_ECHO_DOCS.md for detailed guide
+- Network error? Check config.js has real Convex URL
+- All else? Read SETUP.md for detailed guide
 
 DONE! You now have working domain-based anonymous chat.

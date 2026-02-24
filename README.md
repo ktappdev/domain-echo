@@ -10,7 +10,7 @@ Domain Echo transforms web browsing into a social experience by providing instan
 
 ### Core Functionality
 - **Domain-Based Rooms**: Each domain gets its own isolated chat room
-- **Real-Time Communication**: Messages appear instantly using Supabase Realtime
+- **Real-Time Communication**: Messages appear instantly using Convex real-time functions
 - **Anonymous by Default**: No accounts, no logins—just chat
 - **Live Presence**: See who else is currently viewing the same domain
 - **Ephemeral Identity**: Random usernames generated for each browser session
@@ -18,8 +18,7 @@ Domain Echo transforms web browsing into a social experience by providing instan
 
 ### Technical Highlights
 - Built with vanilla JavaScript for minimal footprint
-- Powered by Supabase for real-time database and subscriptions
-- Row Level Security (RLS) enabled for data protection
+- Powered by Convex for real-time database and subscriptions
 - Responsive and modern UI with smooth animations
 - Automatic cleanup of stale presence data
 
@@ -32,7 +31,7 @@ domain-echo/
 │   ├── popup.html         # Extension popup UI
 │   ├── popup.js           # Main application logic
 │   ├── styles.css         # Styling
-│   ├── config.js          # Supabase configuration
+│   ├── config.js          # Convex configuration
 │   ├── background.js      # Background service worker
 │   ├── icon-generator.html # Tool to generate extension icons
 │   └── SETUP.md           # Detailed setup instructions
@@ -44,14 +43,13 @@ domain-echo/
 ## Quick Start
 
 ### 1. Database Setup
-The Supabase database schema is already configured with:
-- `messages` table for chat history
-- `presence` table for user tracking
-- RLS policies for anonymous access
+The Convex schema is already configured with:
+- Real-time functions for chat messaging
+- Presence tracking for active users
 
 ### 2. Configure Extension
-1. Get your Supabase credentials (URL and Anon Key)
-2. Update `extension/config.js` with your credentials
+1. Get your Convex deployment URL
+2. Update `extension/config.js` with your Convex URL
 3. Generate icons using `extension/icon-generator.html`
 
 ### 3. Install Extension
@@ -71,8 +69,8 @@ When you click the extension icon, it automatically detects the current tab's do
 Each user gets a randomly generated username (e.g., "SwiftFox742") stored locally in browser storage.
 
 ### Real-Time Chat
-- Messages are stored in Supabase and broadcast instantly to all users in the same domain room
-- Supabase Realtime subscriptions ensure zero-latency updates
+- Messages are stored in Convex and broadcast instantly to all users in the same domain room
+- Convex real-time subscriptions ensure zero-latency updates
 
 ### Presence Tracking
 - Users "check in" when they open the extension
@@ -104,7 +102,7 @@ Each user gets a randomly generated username (e.g., "SwiftFox742") stored locall
 - No tracking across domains
 
 ### Security Features
-- Row Level Security (RLS) enabled on all tables
+- Convex authentication and authorization built-in
 - Anonymous access only (no authentication required)
 - Messages are public within their domain scope
 - No cross-domain data sharing
@@ -112,17 +110,17 @@ Each user gets a randomly generated username (e.g., "SwiftFox742") stored locall
 ## Technology Stack
 
 - **Frontend**: Vanilla JavaScript, HTML5, CSS3
-- **Backend**: Supabase (PostgreSQL + Realtime)
+- **Backend**: Convex (real-time database)
 - **Extension**: Chrome Extension Manifest V3
-- **Database**: PostgreSQL with RLS
-- **Real-Time**: Supabase Realtime (WebSocket-based)
+- **Database**: Convex real-time database
+- **Real-Time**: Convex subscriptions
 
 ## Development
 
 ### Prerequisites
 - Node.js and npm (for the main project)
 - Chrome browser
-- Supabase account
+- Convex account
 
 ### Local Development
 The extension runs entirely in the browser. To make changes:
@@ -133,7 +131,7 @@ The extension runs entirely in the browser. To make changes:
 4. Click the extension icon to test changes
 
 ### Database Schema
-Tables are created via Supabase migrations with proper indexes and RLS policies. See the migration file for full schema details.
+Convex schema defines the data structure with proper validators and indexes. See `convex/schema.ts` for full schema details.
 
 ## Limitations
 
